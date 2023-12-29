@@ -3,9 +3,12 @@
 import sys
 import sdl2
 import sdl2.ext
+
+import rospy
 from pong_game.msg import racket
 
 WHITE = sdl2.ext.Color(255, 255, 255)
+YELLOW = sdl2.ext.Color(255, 255, 0)
 
 class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
     def __init__(self, window):
@@ -62,7 +65,7 @@ class TrackingAIController(sdl2.ext.Applicator):
                 continue
 
             centery = sprite.y + sprite.size[1] // 2
-            if self.ball.velocity.vx < 0:
+            if self.ball.velocity.vx > 0:
                 # ball is moving away from the AI
                 if centery < self.maxy // 2:
                     vel.vy = 3
@@ -148,61 +151,79 @@ class CollisionSystem(sdl2.ext.Applicator):
         if (self.ball.sprite.x <= self.minx or
             self.ball.sprite.x + self.ball.sprite.size[0] >= self.maxx):
             self.ball.velocity.vx = - self.ball.velocity.vx
+            self.ball.sprite.x = int(self.maxx / 2)
+            self.ball.sprite.y = int(self.maxy / 2)
+height = 600
+width = 800
+class Game(object):
+    def __init__(self):
+        sdl2.ext.init()
+        self.window = sdl2.ext.Window("The Pong Game", size=(width, height))
+        self.window.show()
+
+        self.world = sdl2.ext.World()
+
+        spriterenderer = SoftwareRenderer(self.window)
+
+        factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
+        sp_paddle1 = factory.from_color(WHITE, size=(20, 100))
+        sp_paddle2 = factory.from_color(WHITE, size=(20, 100))
+
+        self.sp_ball = factory.from_color(YELLOW, size=(20, 20))
+
+        movement = MovementSystem(0, 0, 800, 600)
+        self.collision = CollisionSystem(0, 0, 800, 600)
+        spriterenderer = SoftwareRenderer(self.window)
+        self.aicontroller = TrackingAIController(0, 600)
+
+        self.world.add_system(self.aicontroller)
+        self.world.add_system(movement)
+        self.world.add_system(self.collision)
+        self.world.add_system(spriterenderer)
+
+        self.player_left = Player(self.world, sp_paddle1, 780, 250)
+        self.player_right = Player(self.world, sp_paddle2, 0, 250, True)
 
 
+        ball = Ball(self.world, self.sp_ball, 390, 290)
+        ball.velocity.vx = -5
+        self.collision.ball = ball
+
+        self.aicontroller.ball = ball
+
+    def print_score(self):
+        rospy.loginfo("SCORE:")
+        rospy.loginfo("Player: %s", self.player_left.playerdata.score)
+        rospy.loginfo("Computer: %s", self.player_right.playerdata.score)
+        
+    def score(self):
+        if self.collision.ball.sprite.x == 0:
+            self.player_right.playerdata.score +=10
+            print_score()
+        elif self.collision.ball.sprite.x == width-10:
+            self.player_left.playerdata.score +=10
+            print_score()
+
+            
+
+    def loop(self):
+        self.world.process()
+        self.score()
+
+    def callback(self,msg):
+        self.player_left.sprite.y = int (msg.position * 500 - 50)
+        
+
+player1 = None
 def run():
-    sdl2.ext.init()
-    window = sdl2.ext.Window("The Pong Game", size=(800, 600))
-    window.show()
+    rospy.init_node('game_field',log_level=rospy.INFO, anonymous=True)
+    game = Game()
+    rospy.Subscriber("gamecontrol", racket, game.callback)
+    rate = rospy.Rate(50)
 
-    world = sdl2.ext.World()
-
-    spriterenderer = SoftwareRenderer(window)
-
-    factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
-    sp_paddle1 = factory.from_color(WHITE, size=(20, 100))
-    sp_paddle2 = factory.from_color(WHITE, size=(20, 100))
-
-    sp_ball = factory.from_color(WHITE, size=(20, 20))
-
-    movement = MovementSystem(0, 0, 800, 600)
-    collision = CollisionSystem(0, 0, 800, 600)
-    spriterenderer = SoftwareRenderer(window)
-    aicontroller = TrackingAIController(0, 600)
-
-    world.add_system(aicontroller)
-    world.add_system(movement)
-    world.add_system(collision)
-    world.add_system(spriterenderer)
-
-    player1 = Player(world, sp_paddle1, 780, 250)
-    player2 = Player(world, sp_paddle2, 0, 250, True)
-
-
-    ball = Ball(world, sp_ball, 390, 290)
-    ball.velocity.vx = -1
-    collision.ball = ball
-
-    aicontroller.ball = ball
-
-    running = True
-    while running:
-        events = sdl2.ext.get_events()
-        for event in events:
-            if event.type == sdl2.SDL_QUIT:
-                running = False
-                break
-            if event.type == sdl2.SDL_KEYDOWN:
-                if event.key.keysym.sym == sdl2.SDLK_UP:
-                    player1.velocity.vy = -3
-                elif event.key.keysym.sym == sdl2.SDLK_DOWN:
-                    player1.velocity.vy = 3
-            elif event.type == sdl2.SDL_KEYUP:
-                if event.key.keysym.sym in (sdl2.SDLK_UP, sdl2.SDLK_DOWN):
-                    player1.velocity.vy = 0
-        sdl2.SDL_Delay(10)
-        world.process()
-    return 0
+    while not rospy.is_shutdown():
+        game.loop()
+        rate.sleep()
 
 if __name__ == "__main__":
-    sys.exit(run())
+    run()
