@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "visual_controller"); 
     ros::NodeHandle n;
     ros::Publisher gameControlPub = n.advertise<pong_game::racket>("gamecontrol", 10);
-    ros::Rate loop_rate(50);
+    ros::Rate loop_rate(25);
     ROS_DEBUG("Initializing OpenCV");
     // OpenCV aruco detector initialization
     cv::VideoCapture inputVideo;
@@ -29,7 +29,6 @@ int main(int argc, char **argv)
     cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_250);
     cv::aruco::ArucoDetector detector(dictionary, detectorParams);
 
-    const int zeroY = height/2;
     while (ros::ok())
     {
         if (inputVideo.grab())
@@ -50,14 +49,12 @@ int main(int argc, char **argv)
                     center += corner;
                 }
                 center /= 4.f;
-                int temp_position;
                 if (center.y > height*0.9)
-                    temp_position =  height*0.9;
+                    racket.position = 1;
                 else if (center.y < height*0.1)
-                    temp_position = height*0.1;
+                    racket.position = 0;
                 else 
-                    temp_position = center.y;
-                racket.position = (zeroY - temp_position)/(height*0.4);
+                    racket.position = ((center.y-(height*0.1)) / (height*0.8));
                 gameControlPub.publish(racket);
                 ROS_INFO("Position: %f", racket.position);
                 cv::drawMarker(image, center, CV_RGB(255,0,0));
