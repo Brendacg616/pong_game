@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   message_generation
+  roslaunch
 )
 find_package( OpenCV REQUIRED )
 ## System dependencies are found with CMake's conventions
@@ -110,7 +111,7 @@ catkin_package(
   CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
 #  DEPENDS system_lib
 )
-
+roslaunch_add_file_check(launch)
 ###########
 ## Build ##
 ###########
