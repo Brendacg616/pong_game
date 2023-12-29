@@ -1,0 +1,4 @@
+ <launch>
+ 	<node name="visual_controller" pkg="pong_game" type="visual_controller_node" />
+  	<node name="pong_field" pkg="pong_game" type="pong.py" output="screen"/>
+ </launch>
