@@ -26,7 +26,7 @@ int main(int argc, char **argv)
     cv::Point r1(width*0.1,height*0.1);
     cv::Point r2(width*0.9, height*0.9);
     cv::aruco::DetectorParameters detectorParams = cv::aruco::DetectorParameters();
-    cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_250);
+    cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
     cv::aruco::ArucoDetector detector(dictionary, detectorParams);
 
     while (ros::ok())
