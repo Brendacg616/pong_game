@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 
+# Pong Game Node
+# This node dsiplays the pong game using SDL 
+# It subscribes to gamecontrol topic to get Player's racket position
+# Part of the pong game implementation is based on tutorial 
+# The Pong Game - PySDL2: 
+# https://pysdl2.readthedocs.io/en/0.9.16/tutorial/pong.html
+
 import sys
 import sdl2
 import sdl2.ext
@@ -22,6 +29,8 @@ class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
         sdl2.ext.draw.line(self.surface, sdl2.ext.Color(255,255,255),(int(width/2), 0, int(width/2), height))
         super(SoftwareRenderer, self).render(components)
 
+
+# Class to move objects such as rackets and ball on the game field        
 class MovementSystem(sdl2.ext.Applicator):
     def __init__(self, minx, miny, maxx, maxy):
         super(MovementSystem, self).__init__()
@@ -54,7 +63,7 @@ class Velocity(object):
         self.vx = 0
         self.vy = 0
 
-
+# AI controller to track ball vertical position - Used to move computer racket
 class TrackingAIController(sdl2.ext.Applicator):
     def __init__(self, miny, maxy):
         super(TrackingAIController, self).__init__()
@@ -109,6 +118,8 @@ class Ball(sdl2.ext.Entity):
         self.sprite.position = posx, posy
         self.velocity = Velocity()
 
+# Class to controll ball behavior when it hits the game field walls or players 
+# rackets. It also keeps track of the score of the players and prints it.
 class CollisionSystem(sdl2.ext.Applicator):
     def __init__(self, minx, miny, maxx, maxy):
         super(CollisionSystem, self).__init__()
@@ -154,10 +165,10 @@ class CollisionSystem(sdl2.ext.Applicator):
             self.ball.sprite.y + self.ball.sprite.size[1] >= self.maxy):
             self.ball.velocity.vy = - self.ball.velocity.vy
 
-        # Increase score if 
+        # Increase player's score if ball hits left wall 
         if (self.ball.sprite.x <= self.minx):
             self.score_right = self.score_right+ 1
-
+        # Increase computer's score if ball hits right wall 
         if (self.ball.sprite.x + self.ball.sprite.size[0] >= self.maxx):
             self.score_left = self.score_left + 1
 
@@ -168,7 +179,7 @@ class CollisionSystem(sdl2.ext.Applicator):
             self.ball.sprite.y = int(self.maxy / 2)
             
             rospy.loginfo("SCORE: Computer %s - Player %s", self.score_left, self.score_right)
-
+# Class to initialize all game components 
 class Game(object):
     def __init__(self):
         sdl2.ext.init()
@@ -200,7 +211,7 @@ class Game(object):
 
 
         ball = Ball(self.world, self.sp_ball, 390, 290)
-        ball.velocity.vx = -5
+        ball.velocity.vx = -3
         self.collision.ball = ball
 
         self.aicontroller.ball = ball

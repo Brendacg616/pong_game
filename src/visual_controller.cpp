@@ -1,3 +1,10 @@
+/**
+ *  Visual Controller
+ * This node gets the position of the center of an Aruco Marker (4x4)
+ * Its vertical position is then published on gamecontrol topic
+ * 
+*/
+
 #include "ros/ros.h"
 #include "pong_game/racket.h"
 #include "ros/console.h"
