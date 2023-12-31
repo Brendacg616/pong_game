@@ -10,12 +10,16 @@ from pong_game.msg import racket
 WHITE = sdl2.ext.Color(255, 255, 255)
 YELLOW = sdl2.ext.Color(255, 255, 0)
 
+height = 600
+width = 800
+
 class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
     def __init__(self, window):
         super(SoftwareRenderer, self).__init__(window)
 
     def render(self, components):
         sdl2.ext.fill(self.surface, sdl2.ext.Color(0, 0, 0))
+        sdl2.ext.draw.line(self.surface, sdl2.ext.Color(255,255,255),(int(width/2), 0, int(width/2), height))
         super(SoftwareRenderer, self).render(components)
 
 class MovementSystem(sdl2.ext.Applicator):
@@ -114,6 +118,8 @@ class CollisionSystem(sdl2.ext.Applicator):
         self.miny = miny
         self.maxx = maxx
         self.maxy = maxy
+        self.score_left = 0
+        self.score_right = 0
 
     def _overlap(self, item):
         pos, sprite = item
@@ -148,13 +154,21 @@ class CollisionSystem(sdl2.ext.Applicator):
             self.ball.sprite.y + self.ball.sprite.size[1] >= self.maxy):
             self.ball.velocity.vy = - self.ball.velocity.vy
 
+        # Increase score if 
+        if (self.ball.sprite.x <= self.minx):
+            self.score_right = self.score_right+ 1
+
+        if (self.ball.sprite.x + self.ball.sprite.size[0] >= self.maxx):
+            self.score_left = self.score_left + 1
+
         if (self.ball.sprite.x <= self.minx or
             self.ball.sprite.x + self.ball.sprite.size[0] >= self.maxx):
             self.ball.velocity.vx = - self.ball.velocity.vx
             self.ball.sprite.x = int(self.maxx / 2)
             self.ball.sprite.y = int(self.maxy / 2)
-height = 600
-width = 800
+            
+            rospy.loginfo("SCORE: Computer %s - Player %s", self.score_left, self.score_right)
+
 class Game(object):
     def __init__(self):
         sdl2.ext.init()
@@ -181,8 +195,8 @@ class Game(object):
         self.world.add_system(self.collision)
         self.world.add_system(spriterenderer)
 
-        self.player_left = Player(self.world, sp_paddle1, 780, 250)
-        self.player_right = Player(self.world, sp_paddle2, 0, 250, True)
+        self.player_right = Player(self.world, sp_paddle1, 780, 250)
+        self.player_left = Player(self.world, sp_paddle2, 0, 250, True)
 
 
         ball = Ball(self.world, self.sp_ball, 390, 290)
@@ -190,33 +204,19 @@ class Game(object):
         self.collision.ball = ball
 
         self.aicontroller.ball = ball
-
-    def print_score(self):
-        rospy.loginfo("SCORE:")
-        rospy.loginfo("Player: %s", self.player_left.playerdata.score)
-        rospy.loginfo("Computer: %s", self.player_right.playerdata.score)
-        
-    def score(self):
-        if self.collision.ball.sprite.x == 0:
-            self.player_right.playerdata.score +=10
-            print_score()
-        elif self.collision.ball.sprite.x == width-10:
-            self.player_left.playerdata.score +=10
-            print_score()
-
             
 
     def loop(self):
         self.world.process()
-        self.score()
+
 
     def callback(self,msg):
-        self.player_left.sprite.y = int (msg.position * 500 - 50)
+        self.player_right.sprite.y = int (msg.position * 500 - 50)
         
 
 player1 = None
 def run():
-    rospy.init_node('game_field',log_level=rospy.INFO, anonymous=True)
+    rospy.init_node('game_field', anonymous=True)
     game = Game()
     rospy.Subscriber("gamecontrol", racket, game.callback)
     rate = rospy.Rate(50)
@@ -224,6 +224,7 @@ def run():
     while not rospy.is_shutdown():
         game.loop()
         rate.sleep()
+        
 
 if __name__ == "__main__":
     run()
